@@ -1,0 +1,11 @@
+stages:
+  - push
+
+push:
+  stage: push
+  image: ${BUILDER_IMAGE}
+  variables:
+    CUE_REGISTRY: ${CI_REGISTRY_IMAGE}
+  script:
+    - cue mod publish $(git describe --tags | sed -E -e 's/(-[0-9]+)-g/\1./')
+
