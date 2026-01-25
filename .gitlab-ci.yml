@@ -6,6 +6,8 @@ push:
   image: ${BUILDER_IMAGE}
   variables:
     CUE_REGISTRY: ${CI_REGISTRY_IMAGE}
+  before_script:
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"},\"${CI_DEPENDENCY_PROXY_SERVER}\":{\"auth\":\"$(printf "%s:%s" ${CI_DEPENDENCY_PROXY_USER} "${CI_DEPENDENCY_PROXY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > "${HOME}/.docker/config.json"
   script:
     - cue mod publish $(git describe --tags | sed -E -e 's/(-[0-9]+)-g/\1./')
 
