@@ -8,7 +8,7 @@ jobs:
   push:
     runs-on: ubuntu-latest
     steps:
-      - uses: cue-lang/setup-cue@v1
+      - uses: cue-lang/setup-cue@v1.0.1
         with:
           version: v0.15.3
       - uses: actions/checkout@v6
