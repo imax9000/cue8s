@@ -1,0 +1,20 @@
+name: Push CUE module
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: cue-lang/setup-cue@v1
+        with:
+          version: v0.15.3
+      - uses: actions/checkout@v6
+      - run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Push
+        env:
+          CUE_REGISTRY: ghcr.io/imax9000/cue8s
+        run: |
+          cue mod publish $(git describe --tags | sed -E -e 's/(-[0-9]+)-g/\1./')
