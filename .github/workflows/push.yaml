@@ -7,6 +7,9 @@ on:
 jobs:
   push:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
     steps:
       - uses: cue-lang/setup-cue@v1.0.1
         with:
