@@ -122,6 +122,9 @@ type:
 }
 ```
 
+It is a good idea to put all this into your own `base` package and then import
+it in each of your leaf packages.
+
 You can take a look at a functioning setup in the [examples](examples/)
 directory.
 
