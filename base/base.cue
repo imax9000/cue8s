@@ -61,8 +61,19 @@ _resourceKindsBase: {
 
 	[string]: {
 		_allValuesAreValidStructs
+	}
 
-		#template: _
+	[string & !="nonValidated"]: {
+		_setTypeMeta
+		#resourceSchema: _
+
+		#template: {
+			// Thanks to embedding, #resourceSchema is allowed to
+			// add new fields not present in _base.
+			_base
+
+			k8s: #resourceSchema
+		}
 
 		[ID=#allowedCharacterSet &
 			#upTo63Characters &
@@ -83,19 +94,6 @@ _resourceKindsBase: {
 		}
 	}
 
-	[string & !="nonValidated"]: {
-		_setTypeMeta
-		#resourceSchema: _
-
-		#template: {
-			// Thanks to embedding, #resourceSchema is allowed to
-			// add new fields not present in _base.
-			_base
-
-			k8s: #resourceSchema
-		}
-	}
-
 	// Escape hatch for, e.g., putting raw manifests from imported YAML w/o having
 	// to explicitly provide schemas for each and every resource kind.
 	nonValidated: {
@@ -105,6 +103,11 @@ _resourceKindsBase: {
 			// Explicitly open.
 			k8s: {...}
 			...
+		}
+
+		// Names are not important, it's up to you to ensure there are no collisions.
+		[string]: {
+			#template
 		}
 	}
 }
