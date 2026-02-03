@@ -61,6 +61,29 @@ _resourceKindsBase: {
 
 	[string]: {
 		_allValuesAreValidStructs
+
+		#template: _
+
+		[ID=#allowedCharacterSet &
+			#upTo63Characters &
+			#startsWithALetter &
+			#endsWithALetterOrDigit]: {
+
+			#template
+			name: ID
+		}
+
+		[ID=_]: {
+			if ((ID & #allowedCharacterSet &
+				#upTo63Characters &
+				#startsWithALetter &
+				#endsWithALetterOrDigit) == _|_) {
+				error("invalid resource name: \(ID)")
+			}
+		}
+	}
+
+	[string & !="nonValidated"]: {
 		_setTypeMeta
 		#resourceSchema: _
 
@@ -71,18 +94,17 @@ _resourceKindsBase: {
 
 			k8s: #resourceSchema
 		}
-		[ID=#allowedCharacterSet &
-			#upTo63Characters &
-			#startsWithALetter &
-			#endsWithALetterOrDigit]: {#template, name: ID}
+	}
 
-		[ID=_]: {
-			if ((ID & #allowedCharacterSet &
-				#upTo63Characters &
-				#startsWithALetter &
-				#endsWithALetterOrDigit) == _|_) {
-				error("invalid resource name: \(ID)")
-			}
+	// Escape hatch for, e.g., putting raw manifests from imported YAML w/o having
+	// to explicitly provide schemas for each and every resource kind.
+	nonValidated: {
+		_allValuesAreValidStructs
+
+		#template: {
+			// Explicitly open.
+			k8s: {...}
+			...
 		}
 	}
 }
