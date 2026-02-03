@@ -54,7 +54,7 @@ _resourceKindsBase: {
 	#util: {...}
 	_base!: _
 
-	#allowedCharacterSet:    =~"^[a-z0-9-]+$"
+	#allowedCharacterSet:    =~"^[.a-z0-9-]+$"
 	#upTo63Characters:       =~"^.{1,63}$"
 	#startsWithALetter:      =~"^[a-z]"
 	#endsWithALetterOrDigit: =~"[a-z0-9]$"
