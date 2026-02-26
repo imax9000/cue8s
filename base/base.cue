@@ -131,26 +131,18 @@ _resourceKindsBase: {
 #namespace: #namespacedResourceKinds & {
 	#util: #namespacedResourceKinds.#util
 	[kind=string]: {
-		_knownKind: list.Contains(#util.knownFields, kind)
-		[
-			if !_knownKind {
-				error("<- object kind not defined in the base package")
-			},
-			_,
-		][0]
+		if !list.Contains(#util.knownFields, kind) {
+			error("<- object kind not defined in the base package")
+		}
 	}
 }
 
 #global: #clusterWideResourceKinds & {
 	#util: #clusterWideResourceKinds.#util
 	[kind=string]: {
-		_knownKind: list.Contains(#util.knownFields, kind)
-		[
-			if !_knownKind {
-				error("<- object kind not defined in the base package")
-			},
-			_,
-		][0]
+		if !list.Contains(#util.knownFields, kind) {
+			error("<- object kind not defined in the base package")
+		}
 	}
 }
 
