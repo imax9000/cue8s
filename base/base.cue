@@ -146,5 +146,5 @@ _resourceKindsBase: {
 	}
 }
 
-[_NS=string & !="global" & !="export"]: #namespace & {#util: namespace: _NS}
-global: #global & {#util: namespace: "global"}
+[_NS=string & !="global"]: #namespace & {#util: namespace: _NS}
+global: #global
