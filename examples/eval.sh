@@ -1,6 +1,18 @@
 #!/bin/sh
 
-package_name="$(grep --max-count=1 --no-filename '^package' $1/*.cue | awk '{print $2}' | sort -u)"
+set -e
+
+root="$(realpath -s "$1")"
+
+while ! [ -r "${root}/cue.mod/module.cue" ]; do
+  root="$(dirname "${root}")"
+  if [ "${root}" = / ]; then
+    echo "Failed to find module root" >&2
+    exit 1
+  fi
+done
+
+package_name="$(cd "${root}/$1"; grep --max-count=1 --no-filename '^package' *.cue | awk '{print $2}' | sort -u)"
 
 if [ x"${package_name}" = x ]; then
   echo "Unable to figure out package name" >&2
@@ -17,7 +29,7 @@ if [ "$(echo "${package_name}" | wc -l)" -gt 1 ]; then
   fi
 fi
 
-module_name="$(cue export --out=text -e module ./cue.mod/module.cue)"
+module_name="$(cue export --out=text -e module "${root}/cue.mod/module.cue")"
 
 cat <<-EOF | cue export --out=text -
 package export

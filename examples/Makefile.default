@@ -1,0 +1,178 @@
+# Default Makefile for subdirs.
+
+MAKEFLAGS := --output-sync=target --no-print-directory
+.DELETE_ON_ERROR:
+.SILENT:
+
+
+ifeq ($(ROOT),)
+  ROOT := $(abspath $(lastword $(MAKEFILE_LIST))/../)
+  ROOT := $(ROOT:%/=%)
+  export ROOT
+endif
+
+ifeq ($(EVAL),)
+	EVAL := $(ROOT:%/=%)/eval.sh
+	export EVAL
+endif
+
+ifeq ($(SUBDIR),)
+	SUBDIR := $(subst $(ROOT),,$(abspath .))
+	SUBDIR := $(SUBDIR:/%=%)
+endif
+
+ifeq ($(SUBDIRS),)
+	SUBDIRS := $(sort $(dir $(shell find . -type f -name '*.cue')))
+	SUBDIRS := $(filter-out ./,$(SUBDIRS))
+	SUBDIRS := $(SUBDIRS:./%/=%)
+endif
+
+space := $() $()
+
+ifeq ($(BASE_FILES),)
+	__base_files_prefix := $(subst $(space),,$(foreach v,$(subst /,$(space),$(SUBDIR)),../))
+	BASE_FILES := $(wildcard \
+		$(__base_files_prefix)base/*.cue \
+		$(__base_files_prefix)base/**/*.cue \
+		$(__base_files_prefix)cue.mod/module.cue \
+	)
+endif
+
+# https://www.gnu.org/software/make/manual/html_node/Multi_002dLine.html
+define newline =
+
+
+endef
+
+__vars := ROOT SUBDIR SUBDIRS BASE_FILES \
+		TIME EVAL DIFF SRCS
+
+.PHONY: debug-vars
+$(eval $(foreach var,$(__vars),debug-vars:: ; @echo $(var)=$$(call $(var))$(newline)))
+
+-include $(ROOT)/local.mk
+
+.DEFAULT_GOAL := print
+
+.PHONY: build print diff
+
+ifeq ($(SUBDIRS),)
+	SUBDIRS := $(shell find * -type f -name *.cue | while read f; do echo $$(dirname "$${f}"); done | sort -u)
+endif
+
+ifneq ($(SUBDIRS),)
+
+IMMEDIATE_SUBDIRS := $(sort $(foreach dir,$(SUBDIRS),$(firstword $(subst /, ,$(dir)))))
+
+.PHONY: $(IMMEDIATE_SUBDIRS:%=build-%)
+build: $(IMMEDIATE_SUBDIRS:%=build-%)
+
+$(IMMEDIATE_SUBDIRS:%=build-%): build-%:
+	@$(MAKE) $(if $(wildcard $*/Makefile),,-f $(ROOT)/Makefile.default) \
+		-C $* \
+		-I $(ROOT) \
+		SUBDIR='$(if $(SUBDIR),$(SUBDIR)/)$*' \
+		SUBDIRS='$(patsubst $*/%,%,$(filter $*/%,$(SUBDIRS)))' \
+		BASE_FILES='$(addprefix ../,$(BASE_FILES))' \
+		build
+
+.PHONY: $(IMMEDIATE_SUBDIRS:%=print-%)
+print: $(IMMEDIATE_SUBDIRS:%=print-%)
+
+$(IMMEDIATE_SUBDIRS:%=print-%): print-%:
+	@$(MAKE) $(if $(wildcard $*/Makefile),,-f $(ROOT)/Makefile.default) \
+		-C $* \
+		-I $(ROOT) \
+		SUBDIR='$(if $(SUBDIR),$(SUBDIR)/)$*' \
+		SUBDIRS='$(patsubst $*/%,%,$(filter $*/%,$(SUBDIRS)))' \
+		print
+
+.PHONY: $(IMMEDIATE_SUBDIRS:%=diff-%)
+diff: $(IMMEDIATE_SUBDIRS:%=diff-%)
+
+$(IMMEDIATE_SUBDIRS:%=diff-%): diff-%:
+	@$(MAKE) $(if $(wildcard $*/Makefile),,-f $(ROOT)/Makefile.default) \
+		-C $* \
+		-I $(ROOT) \
+		SUBDIR='$(if $(SUBDIR),$(SUBDIR)/)$*' \
+		SUBDIRS='$(patsubst $*/%,%,$(filter $*/%,$(SUBDIRS)))' \
+		diff
+
+.PHONY: $(IMMEDIATE_SUBDIRS:%=vet-%)
+vet: $(IMMEDIATE_SUBDIRS:%=vet-%)
+
+$(IMMEDIATE_SUBDIRS:%=vet-%): vet-%:
+	@$(MAKE) $(if $(wildcard $*/Makefile),,-f $(ROOT)/Makefile.default) \
+		-C $* \
+		-I $(ROOT) \
+		SUBDIR='$(if $(SUBDIR),$(SUBDIR)/)$*' \
+		SUBDIRS='$(patsubst $*/%,%,$(filter $*/%,$(SUBDIRS)))' \
+		vet
+
+.PHONY: $(IMMEDIATE_SUBDIRS:%=clean-%)
+clean:: $(IMMEDIATE_SUBDIRS:%=clean-%)
+
+$(IMMEDIATE_SUBDIRS:%=clean-%): clean-%:
+	@$(MAKE) $(if $(wildcard $*/Makefile),,-f $(ROOT)/Makefile.default) \
+		-C $* \
+		-I $(ROOT) \
+		SUBDIR='$(if $(SUBDIR),$(SUBDIR)/)$*' \
+		SUBDIRS='$(patsubst $*/%,%,$(filter $*/%,$(SUBDIRS)))' \
+		clean
+
+endif
+
+SRCS := $(wildcard *.cue)
+
+ifneq ($(SRCS),)
+
+# Suppress "Nothing to be done for 'build'" messages
+build: manifests.yaml
+	@true
+
+manifests.yaml: $(wildcard *.cue) $(EMBEDS)
+manifests.yaml: $(BASE_FILES)
+
+# Ensure that subdirs are updated before we attempt to evaluate.
+manifests.yaml: | $(IMMEDIATE_SUBDIRS:%=build-%)
+
+manifests.yaml:
+	@$(TIME) $(EVAL) $(SUBDIR) > $@
+
+print: $(EMBEDS)
+	@$(TIME) $(EVAL) $(SUBDIR)
+
+diff: $(EMBEDS)
+	@-$(EVAL) $(SUBDIR) | $(DIFF) manifests.yaml -
+
+vet: $(EMBEDS)
+	@cue vet --concrete=false .
+
+clean::
+	@-rm manifests.yaml
+
+endif
+
+.PHONY: fmt
+fmt:
+	cue fmt -s ./...
+
+# tar.gz
+
+TAR_FLAGS ?= --mtime=@0 --sort=name --group=group:1000 --owner=user:1000 --no-acls
+
+archive.tar.gz: build
+archive.tar.gz: $(SUBDIRS:%=%/manifests.yaml)
+	@tar czvf $@ $(TAR_FLAGS) $(filter-out build,$^)
+
+ifneq ($(SRCS),)
+
+archive.tar.gz: manifests.yaml
+
+endif
+
+clean::
+	@-rm archive.tar.gz
+
+%.yaml: %.cue
+	@cue export --out=yaml ./$< > $@
