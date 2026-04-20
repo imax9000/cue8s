@@ -156,3 +156,19 @@ EOF
 [eval.sh](examples/eval.sh) script encapsulates this, and
 [this Makefile](examples/Makefile) is an example of invoking it on a tree of
 directories.
+
+### Helm charts
+
+It's possible to pre-render Helm charts and import them into CUE. Most of the
+work needs to be done by the build system and has little to do with CUE. A few
+things to keep in mind:
+
+* Your deployment system must handle [Helm hook annotations](https://helm.sh/docs/topics/charts_hooks)
+    on raw manifest inputs.
+* `helm template` output often fails to import directly and must be tweaked
+    a little bit.
+* CUE doesn't provide a good way to override a value that was set elsewhere,
+    so if you want to specify values of some fields in CUE - you need to delete
+    them from `helm template` output before importing.
+
+See [here](examples/example_helm/) for a full working example.
